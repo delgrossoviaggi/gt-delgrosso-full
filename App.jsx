@@ -90,6 +90,143 @@ export default function App() {
   // --------------------------------------------
   // RENDER del layout principale
   // --------------------------------------------
+  // --------------------------------------------
+  // CARICAMENTO PRENOTAZIONI
+  // --------------------------------------------
+  async function loadBookings() {
+    setLoadingBookings(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("bookings")
+      .select("*")
+      .eq("busType", String(busType))
+      .order("seat", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      setMessage("Errore nel caricare le prenotazioni.");
+    } else {
+      setBookings(data);
+    }
+
+    setLoadingBookings(false);
+  }
+
+  // --------------------------------------------
+  // CARICAMENTO METE
+  // --------------------------------------------
+  async function loadTrips() {
+    setLoadingTrips(true);
+
+    const { data, error } = await supabase
+      .from("trips")
+      .select("*")
+      .order("date", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      setMessage("Errore nel caricare le mete.");
+    } else {
+      setTrips(data);
+      if (data.length > 0 && !form.destinazione) {
+        setForm((f) => ({ ...f, destinazione: data[0].name }));
+      }
+    }
+
+    setLoadingTrips(false);
+  }
+
+  // --------------------------------------------
+  // EFFETTI INIZIALI
+  // --------------------------------------------
+  useEffect(() => {
+    loadBookings();
+  }, [busType]);
+
+  useEffect(() => {
+    loadTrips();
+  }, []);
+
+  // --------------------------------------------
+  // SELEZIONE POSTO
+  // --------------------------------------------
+  function selectSeat(id) {
+    if (bookings.find((b) => Number(b.seat) === id)) return;
+    setSelectedSeat((prev) => (prev === id ? null : id));
+  }
+
+  // --------------------------------------------
+  // SALVATAGGIO PRENOTAZIONE
+  // --------------------------------------------
+  async function saveBooking() {
+    setMessage("");
+
+    if (!selectedSeat) {
+      alert("Seleziona un posto.");
+      return;
+    }
+
+    if (!form.nome || !form.cognome || !form.telefono || !form.partenza) {
+      alert("Compila tutti i campi obbligatori.");
+      return;
+    }
+
+    if (!form.dataPartenza) {
+      alert("Inserisci la data del viaggio.");
+      return;
+    }
+
+    const payload = {
+      seat: selectedSeat,
+      nome: form.nome,
+      cognome: form.cognome,
+      telefono: form.telefono,
+      partenza: form.partenza,
+      data_partenza: form.dataPartenza,
+      destinazione: form.destinazione,
+      busType: String(busType)
+    };
+
+    const { error } = await supabase.from("bookings").insert(payload);
+
+    if (error) {
+      console.error(error);
+      setMessage("Errore nel salvare la prenotazione.");
+      return;
+    }
+
+    setMessage("Prenotazione salvata!");
+    setSelectedSeat(null);
+    setForm({
+      nome: "",
+      cognome: "",
+      telefono: "",
+      partenza: "",
+      dataPartenza: "",
+      destinazione: trips.length > 0 ? trips[0].name : ""
+    });
+
+    loadBookings();
+  }
+
+  // --------------------------------------------
+  // CANCELLAZIONE PRENOTAZIONE
+  // --------------------------------------------
+  async function cancelBooking(id) {
+    if (!window.confirm("Eliminare questa prenotazione?")) return;
+
+    const { error } = await supabase.from("bookings").delete().eq("id", id);
+
+    if (error) {
+      console.error(error);
+      setMessage("Errore nell'eliminare la prenotazione.");
+      return;
+    }
+
+    setMessage("Prenotazione cancellata.");
+    loadBookings();
+  }
 
   return (
     <div className="page">
