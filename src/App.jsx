@@ -4,15 +4,16 @@ import { supabase } from "./supabase";
 /**
  * DELGROSSO VIAGGI & LIMOUSINE BUS
  * Gestionale prenotazioni Bus GT (53 / 63 posti)
+ * + Area riservata admin (gestione mete + lista partecipanti)
  */
 
-// ---- Helpers ----
+// ---------- Helpers ----------
 
 function generateSeats(totalSeats) {
   const seats = [];
   let n = 1;
   while (n <= totalSeats) {
-    const row = [null, null, null, null]; // 2 sedili + corridoio + 2 sedili
+    const row = [null, null, null, null]; // 2 + corridoio + 2
     for (let i = 0; i < 4 && n <= totalSeats; i++) {
       row[i] = { id: n, label: String(n) };
       n++;
@@ -45,7 +46,12 @@ function Seat({ seat, status, onClick }) {
   );
 }
 
+// ---------- Component ----------
+
 export default function App() {
+  // Password area riservata
+  const ADMIN_PASSWORD = "DEL2025BUS"; // cambiala come vuoi
+
   // stato base
   const [busType, setBusType] = useState("53");
   const [seatsLayout, setSeatsLayout] = useState(() => generateSeats(53));
@@ -69,21 +75,26 @@ export default function App() {
 
   const [message, setMessage] = useState("");
 
-  // ---- EFFECTS ----
+  // area riservata
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminPassInput, setAdminPassInput] = useState("");
 
-  // cambia piantina quando cambia bus
+  // capacità bus & stato pieno
+  const capacity = busType === "53" ? 53 : 63;
+  const isBusFull = bookings.length >= capacity;
+
+  // ---------- EFFECTS ----------
+
   useEffect(() => {
     setSeatsLayout(generateSeats(Number(busType)));
     setSelectedSeat(null);
   }, [busType]);
 
-  // carica prenotazioni quando cambia bus
   useEffect(() => {
     loadBookings(busType);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busType]);
 
-  // carica mete (trips)
   useEffect(() => {
     async function loadTrips() {
       try {
@@ -118,7 +129,7 @@ export default function App() {
     loadTrips();
   }, []);
 
-  // ---- FUNZIONI PRENOTAZIONI ----
+  // ---------- FUNZIONI PRENOTAZIONI ----------
 
   async function loadBookings(currentBusType) {
     try {
@@ -189,7 +200,7 @@ export default function App() {
         cognome: form.cognome,
         telefono: form.telefono,
         partenza: form.partenza,
-        data_partenza: form.dataPartenza, // NOME COLONNA UGUALE ALLA TABELLA
+        data_partenza: form.dataPartenza,
         destinazione: form.destinazione,
         busType: String(busType),
       };
@@ -238,7 +249,7 @@ export default function App() {
     }
   }
 
-  // ---- FUNZIONI METE ----
+  // ---------- FUNZIONI METE (trips) ----------
 
   async function addTrip() {
     const name = window.prompt("Nuova meta (es. Milano):");
@@ -255,7 +266,6 @@ export default function App() {
         setMessage("Errore Supabase: " + error.message);
         return;
       }
-      // ricarico le mete
       setMessage("Meta aggiunta.");
       const { data } = await supabase
         .from("trips")
@@ -319,7 +329,19 @@ export default function App() {
     }
   }
 
-  // ---- RENDER ----
+  // ---------- AREA RISERVATA ----------
+
+  function handleAdminLogin() {
+    if (adminPassInput === ADMIN_PASSWORD) {
+      setIsAdmin(true);
+      setAdminPassInput("");
+      setMessage("Accesso area riservata effettuato.");
+    } else {
+      alert("Password errata.");
+    }
+  }
+
+  // ---------- RENDER ----------
 
   return (
     <div className="min-h-screen p-4 sm:p-6 bg-slate-50">
@@ -354,9 +376,32 @@ export default function App() {
                 <option value="63">GT 63 posti</option>
               </select>
             </div>
+
             <div className="text-xs text-slate-500">
-              Prenotazioni salvate su Supabase (tabella <code>bookings</code>).
+              Prenotazioni su Supabase (tabella <code>bookings</code>).
             </div>
+
+            {!isAdmin ? (
+              <div className="flex items-center gap-2 mt-1">
+                <input
+                  type="password"
+                  placeholder="Password admin"
+                  value={adminPassInput}
+                  onChange={(e) => setAdminPassInput(e.target.value)}
+                  className="border rounded px-2 py-1 text-xs"
+                />
+                <button
+                  onClick={handleAdminLogin}
+                  className="px-2 py-1 rounded bg-slate-800 text-white text-xs"
+                >
+                  Entra
+                </button>
+              </div>
+            ) : (
+              <div className="text-[11px] text-emerald-600 font-semibold mt-1">
+                Area riservata attiva
+              </div>
+            )}
           </div>
         </header>
 
@@ -584,57 +629,59 @@ export default function App() {
             </div>
           </section>
 
-          {/* Aside: mete + prenotazioni */}
+          {/* Aside: mete + prenotazioni + area admin */}
           <aside className="space-y-4">
-            {/* Mete */}
-            <div className="p-4 bg-white border rounded-lg text-sm">
-              <h3 className="font-medium mb-2">Mete &amp; date</h3>
-              <ul className="space-y-2">
-                {trips.map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex justify-between items-center gap-2"
-                  >
-                    <span>
-                      {t.name}{" "}
-                      {t.date && (
-                        <span className="text-xs text-slate-500">
-                          ({t.date})
-                        </span>
-                      )}
-                    </span>
-                    <div className="flex gap-2 text-xs">
-                      <button
-                        onClick={() => editTrip(t)}
-                        className="underline"
-                      >
-                        Modifica
-                      </button>
-                      <button
-                        onClick={() => removeTrip(t)}
-                        className="text-red-600"
-                      >
-                        Elimina
-                      </button>
-                    </div>
-                  </li>
-                ))}
-                {trips.length === 0 && !loadingTrips && (
-                  <li className="text-xs text-slate-500">
-                    Nessuna meta. Aggiungine una.
-                  </li>
-                )}
-              </ul>
+            {/* Mete & date (solo admin) */}
+            {isAdmin && (
+              <div className="p-4 bg-white border rounded-lg text-sm">
+                <h3 className="font-medium mb-2">Mete &amp; date</h3>
+                <ul className="space-y-2">
+                  {trips.map((t) => (
+                    <li
+                      key={t.id}
+                      className="flex justify-between items-center gap-2"
+                    >
+                      <span>
+                        {t.name}{" "}
+                        {t.date && (
+                          <span className="text-xs text-slate-500">
+                            ({t.date})
+                          </span>
+                        )}
+                      </span>
+                      <div className="flex gap-2 text-xs">
+                        <button
+                          onClick={() => editTrip(t)}
+                          className="underline"
+                        >
+                          Modifica
+                        </button>
+                        <button
+                          onClick={() => removeTrip(t)}
+                          className="text-red-600"
+                        >
+                          Elimina
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                  {trips.length === 0 && !loadingTrips && (
+                    <li className="text-xs text-slate-500">
+                      Nessuna meta. Aggiungine una.
+                    </li>
+                  )}
+                </ul>
 
-              <button
-                onClick={addTrip}
-                className="mt-3 px-3 py-1.5 rounded border text-sm w-full"
-              >
-                Aggiungi meta
-              </button>
-            </div>
+                <button
+                  onClick={addTrip}
+                  className="mt-3 px-3 py-1.5 rounded border text-sm w-full"
+                >
+                  Aggiungi meta
+                </button>
+              </div>
+            )}
 
-            {/* Prenotazioni */}
+            {/* Prenotazioni (viste da tutti) */}
             <div className="p-4 bg-white border rounded-lg text-sm">
               <h3 className="font-medium mb-2">
                 Prenotazioni ({bookings.length})
@@ -672,14 +719,16 @@ export default function App() {
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <button
-                        onClick={() => handleCancelBooking(b.id)}
-                        className="text-xs text-red-600"
-                      >
-                        Annulla
-                      </button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex flex-col items-end gap-1">
+                        <button
+                          onClick={() => handleCancelBooking(b.id)}
+                          className="text-xs text-red-600"
+                        >
+                          Annulla
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {bookings.length === 0 && (
@@ -689,6 +738,72 @@ export default function App() {
                 )}
               </div>
             </div>
+
+            {/* Area admin: lista partecipanti + piantina completa */}
+            {isAdmin && (
+              <div className="p-4 bg-white border rounded-lg text-sm">
+                <h3 className="font-medium mb-2">
+                  {isBusFull
+                    ? "BUS COMPLETO – Lista partecipanti"
+                    : "Lista partecipanti (area riservata)"}
+                </h3>
+
+                <p className="text-xs text-slate-500 mb-2">
+                  Bus GT {busType} — posti prenotati: {bookings.length}/
+                  {capacity}
+                </p>
+
+                <div className="max-h-64 overflow-auto border rounded mb-3">
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-slate-100">
+                      <tr>
+                        <th className="px-2 py-1 text-left">Posto</th>
+                        <th className="px-2 py-1 text-left">Nome</th>
+                        <th className="px-2 py-1 text-left">Partenza</th>
+                        <th className="px-2 py-1 text-left">Meta</th>
+                        <th className="px-2 py-1 text-left">Tel</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bookings.map((b) => (
+                        <tr key={b.id} className="border-t">
+                          <td className="px-2 py-1">{b.seat}</td>
+                          <td className="px-2 py-1">
+                            {b.nome} {b.cognome}
+                          </td>
+                          <td className="px-2 py-1">{b.partenza}</td>
+                          <td className="px-2 py-1">{b.destinazione}</td>
+                          <td className="px-2 py-1">{b.telefono}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <h4 className="font-medium mb-1 text-xs">
+                  Piantina completa (testo)
+                </h4>
+                <div className="max-h-48 overflow-auto border rounded p-2 text-[11px] space-y-1">
+                  {Array.from({ length: capacity }, (_, i) => i + 1).map(
+                    (seatNumber) => {
+                      const booking = bookings.find(
+                        (b) => Number(b.seat) === seatNumber
+                      );
+                      return (
+                        <div key={seatNumber}>
+                          <span className="font-semibold">
+                            Posto {seatNumber}:
+                          </span>{" "}
+                          {booking
+                            ? `${booking.nome} ${booking.cognome} — ${booking.partenza} → ${booking.destinazione} (Tel: ${booking.telefono})`
+                            : "LIBERO"}
+                        </div>
+                      );
+                    }
+                  )}
+                </div>
+              </div>
+            )}
           </aside>
         </main>
       </div>
