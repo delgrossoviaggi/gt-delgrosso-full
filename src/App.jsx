@@ -4,17 +4,15 @@ import { supabase } from "./supabase";
 /**
  * DELGROSSO VIAGGI & LIMOUSINE BUS
  * Gestionale prenotazioni Bus GT (53 / 63 posti)
- * con mete + date su Supabase e aggiornamento realtime.
  */
 
 // ---- Helpers ----
 
-// genera la piantina 2+2 con corridoio
 function generateSeats(totalSeats) {
   const seats = [];
   let n = 1;
   while (n <= totalSeats) {
-    const row = [null, null, null, null];
+    const row = [null, null, null, null]; // 2 sedili + corridoio + 2 sedili
     for (let i = 0; i < 4 && n <= totalSeats; i++) {
       row[i] = { id: n, label: String(n) };
       n++;
@@ -48,6 +46,7 @@ function Seat({ seat, status, onClick }) {
 }
 
 export default function App() {
+  // stato base
   const [busType, setBusType] = useState("53");
   const [seatsLayout, setSeatsLayout] = useState(() => generateSeats(53));
 
@@ -72,19 +71,19 @@ export default function App() {
 
   // ---- EFFECTS ----
 
-  // aggiorna piantina quando cambia bus
+  // cambia piantina quando cambia bus
   useEffect(() => {
     setSeatsLayout(generateSeats(Number(busType)));
     setSelectedSeat(null);
   }, [busType]);
 
-  // carica prenotazioni al cambio bus
+  // carica prenotazioni quando cambia bus
   useEffect(() => {
     loadBookings(busType);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busType]);
 
-  // carica mete + date (trips) e attiva realtime
+  // carica mete (trips)
   useEffect(() => {
     async function loadTrips() {
       try {
@@ -94,7 +93,12 @@ export default function App() {
           .select("*")
           .order("date", { ascending: true });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase error (trips):", error.message);
+          setMessage("Errore nel caricare le mete.");
+          return;
+        }
+
         setTrips(data || []);
 
         if ((data || []).length > 0) {
@@ -105,42 +109,13 @@ export default function App() {
         }
       } catch (err) {
         console.error(err);
-        setMessage("Errore nel caricare mete e date dal server.");
+        setMessage("Errore nel caricare le mete.");
       } finally {
         setLoadingTrips(false);
       }
     }
 
     loadTrips();
-
-    const channel = supabase
-      .channel("public:trips")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "trips" },
-        (payload) => {
-          setTrips((current) => {
-            let next = [...current];
-            if (payload.eventType === "INSERT") {
-              next.push(payload.new);
-            } else if (payload.eventType === "UPDATE") {
-              next = next.map((t) =>
-                t.id === payload.new.id ? payload.new : t
-              );
-            } else if (payload.eventType === "DELETE") {
-              next = next.filter((t) => t.id !== payload.old.id);
-            }
-            return next.sort((a, b) =>
-              (a.date || "").localeCompare(b.date || "")
-            );
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   // ---- FUNZIONI PRENOTAZIONI ----
@@ -154,11 +129,16 @@ export default function App() {
         .eq("busType", String(currentBusType))
         .order("seat", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error (bookings load):", error.message);
+        setMessage("Errore nel caricare le prenotazioni.");
+        return;
+      }
+
       setBookings(data || []);
     } catch (err) {
       console.error(err);
-      setMessage("Errore nel caricare le prenotazioni dal server.");
+      setMessage("Errore nel caricare le prenotazioni.");
     } finally {
       setLoadingBookings(false);
     }
@@ -174,6 +154,8 @@ export default function App() {
   }
 
   async function handleBook() {
+    setMessage("");
+
     if (!selectedSeat) {
       alert("Seleziona prima un posto sul bus.");
       return;
@@ -191,29 +173,36 @@ export default function App() {
       return;
     }
 
-    const seatAlreadyBooked = bookings.some(
+    const already = bookings.some(
       (b) => Number(b.seat) === Number(selectedSeat)
     );
-    if (seatAlreadyBooked) {
+    if (already) {
       alert("Questo posto è già prenotato. Aggiorna la pagina.");
       await loadBookings(busType);
       return;
     }
 
     try {
-      setMessage("Salvo la prenotazione...");
-      const { error } = await supabase.from("bookings").insert({
+      const payload = {
         seat: selectedSeat,
         nome: form.nome,
         cognome: form.cognome,
         telefono: form.telefono,
         partenza: form.partenza,
-        data_partenza: form.dataPartenza,
+        data_partenza: form.dataPartenza, // NOME COLONNA UGUALE ALLA TABELLA
         destinazione: form.destinazione,
         busType: String(busType),
-      });
+      };
 
-      if (error) throw error;
+      console.log("Inserisco prenotazione:", payload);
+
+      const { error } = await supabase.from("bookings").insert(payload);
+
+      if (error) {
+        console.error("Supabase error (insert):", error.message);
+        setMessage("Errore Supabase: " + error.message);
+        return;
+      }
 
       setMessage("Prenotazione salvata con successo!");
       setSelectedSeat(null);
@@ -227,7 +216,7 @@ export default function App() {
       }));
       await loadBookings(busType);
     } catch (err) {
-      console.error(err);
+      console.error("Errore JS:", err);
       setMessage("Errore nel salvare la prenotazione.");
     }
   }
@@ -236,7 +225,11 @@ export default function App() {
     if (!window.confirm("Vuoi annullare questa prenotazione?")) return;
     try {
       const { error } = await supabase.from("bookings").delete().eq("id", id);
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error (delete):", error.message);
+        setMessage("Errore Supabase: " + error.message);
+        return;
+      }
       setMessage("Prenotazione annullata.");
       await loadBookings(busType);
     } catch (err) {
@@ -245,7 +238,7 @@ export default function App() {
     }
   }
 
-  // ---- FUNZIONI METE (trips) ----
+  // ---- FUNZIONI METE ----
 
   async function addTrip() {
     const name = window.prompt("Nuova meta (es. Milano):");
@@ -257,7 +250,18 @@ export default function App() {
 
     try {
       const { error } = await supabase.from("trips").insert({ name, date });
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error (trip insert):", error.message);
+        setMessage("Errore Supabase: " + error.message);
+        return;
+      }
+      // ricarico le mete
+      setMessage("Meta aggiunta.");
+      const { data } = await supabase
+        .from("trips")
+        .select("*")
+        .order("date", { ascending: true });
+      setTrips(data || []);
     } catch (err) {
       console.error(err);
       setMessage("Errore nell'aggiungere la meta.");
@@ -278,7 +282,17 @@ export default function App() {
         .from("trips")
         .update({ name, date })
         .eq("id", trip.id);
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error (trip update):", error.message);
+        setMessage("Errore Supabase: " + error.message);
+        return;
+      }
+      setMessage("Meta aggiornata.");
+      const { data } = await supabase
+        .from("trips")
+        .select("*")
+        .order("date", { ascending: true });
+      setTrips(data || []);
     } catch (err) {
       console.error(err);
       setMessage("Errore nel modificare la meta.");
@@ -292,7 +306,13 @@ export default function App() {
         .from("trips")
         .delete()
         .eq("id", trip.id);
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error (trip delete):", error.message);
+        setMessage("Errore Supabase: " + error.message);
+        return;
+      }
+      setMessage("Meta eliminata.");
+      setTrips((ts) => ts.filter((t) => t.id !== trip.id));
     } catch (err) {
       console.error(err);
       setMessage("Errore nell'eliminare la meta.");
@@ -307,17 +327,11 @@ export default function App() {
         {/* HEADER */}
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div className="flex items-center gap-4">
-            {/* LOGO */}
             <img
               src="/delgrosso-logo.png"
               alt="DelGrosso Viaggi & Limousine Bus"
               className="h-16 object-contain"
-              onError={(e) => {
-                // se il logo non si carica, mostra un fallback testuale
-                e.currentTarget.style.display = "none";
-              }}
             />
-
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold">
                 DELGROSSO VIAGGI &amp; LIMOUSINE BUS
@@ -341,7 +355,7 @@ export default function App() {
               </select>
             </div>
             <div className="text-xs text-slate-500">
-              Prenotazioni su Supabase (tabella <code>bookings</code>).
+              Prenotazioni salvate su Supabase (tabella <code>bookings</code>).
             </div>
           </div>
         </header>
@@ -570,9 +584,9 @@ export default function App() {
             </div>
           </section>
 
-          {/* Aside: mete & prenotazioni */}
+          {/* Aside: mete + prenotazioni */}
           <aside className="space-y-4">
-            {/* Mete & date */}
+            {/* Mete */}
             <div className="p-4 bg-white border rounded-lg text-sm">
               <h3 className="font-medium mb-2">Mete &amp; date</h3>
               <ul className="space-y-2">
@@ -620,7 +634,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* Lista prenotazioni */}
+            {/* Prenotazioni */}
             <div className="p-4 bg-white border rounded-lg text-sm">
               <h3 className="font-medium mb-2">
                 Prenotazioni ({bookings.length})
