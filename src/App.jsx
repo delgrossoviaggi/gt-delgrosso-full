@@ -3,16 +3,18 @@ import { supabase } from "./supabase";
 
 /**
  * DELGROSSO VIAGGI & LIMOUSINE BUS
- * Gestionale prenotazioni bus GT con Supabase.
+ * Gestionale prenotazioni Bus GT (53 / 63 posti)
+ * con mete + date su Supabase e aggiornamento realtime.
  */
 
-const DEFAULT_DESTINATIONS = ["Milano", "Roma", "Venezia"];
+// ---- Helpers ----
 
+// genera la piantina 2+2 con corridoio
 function generateSeats(totalSeats) {
   const seats = [];
   let n = 1;
   while (n <= totalSeats) {
-    const row = [null, null, null, null]; // 2 sinistra - corridoio - 2 destra
+    const row = [null, null, null, null];
     for (let i = 0; i < 4 && n <= totalSeats; i++) {
       row[i] = { id: n, label: String(n) };
       n++;
@@ -26,13 +28,13 @@ function Seat({ seat, status, onClick }) {
   if (!seat) return <div className="w-10 h-10" />;
 
   const base =
-    "w-10 h-10 flex items-center justify-center rounded-md text-sm cursor-pointer border transition";
+    "w-10 h-10 flex items-center justify-center rounded-md text-xs sm:text-sm cursor-pointer border transition";
   const cls =
     status === "booked"
       ? base +
         " bg-gray-300 border-gray-400 text-gray-700 cursor-not-allowed line-through"
       : status === "selected"
-      ? base + " bg-blue-500 text-white border-blue-700 shadow"
+      ? base + " bg-emerald-500 text-white border-emerald-700 shadow"
       : base + " bg-white border-gray-300 hover:shadow";
 
   return (
@@ -48,64 +50,104 @@ function Seat({ seat, status, onClick }) {
 export default function App() {
   const [busType, setBusType] = useState("53");
   const [seatsLayout, setSeatsLayout] = useState(() => generateSeats(53));
+
   const [bookings, setBookings] = useState([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
 
-  const [destinations, setDestinations] = useState(() => {
-    try {
-      const saved = localStorage.getItem("dg_destinations");
-      return saved ? JSON.parse(saved) : DEFAULT_DESTINATIONS;
-    } catch {
-      return DEFAULT_DESTINATIONS;
-    }
-  });
+  const [trips, setTrips] = useState([]);
+  const [loadingTrips, setLoadingTrips] = useState(true);
 
   const [selectedSeat, setSelectedSeat] = useState(null);
+
   const [form, setForm] = useState({
     nome: "",
     cognome: "",
     telefono: "",
     partenza: "",
-    destinazione: DEFAULT_DESTINATIONS[0],
-  });
-
-  const [logoDataUrl, setLogoDataUrl] = useState(() => {
-    try {
-      return localStorage.getItem("dg_logo") || "";
-    } catch {
-      return "";
-    }
+    dataPartenza: "",
+    destinazione: "",
   });
 
   const [message, setMessage] = useState("");
 
-  // Aggiorna piantina quando cambia tipo di bus
+  // ---- EFFECTS ----
+
+  // aggiorna piantina quando cambia bus
   useEffect(() => {
-    const total = Number(busType);
-    setSeatsLayout(generateSeats(total));
+    setSeatsLayout(generateSeats(Number(busType)));
+    setSelectedSeat(null);
   }, [busType]);
 
-  // Salva destinazioni e logo in localStorage
-  useEffect(() => {
-    localStorage.setItem("dg_destinations", JSON.stringify(destinations));
-  }, [destinations]);
-
-  useEffect(() => {
-    if (logoDataUrl) {
-      localStorage.setItem("dg_logo", logoDataUrl);
-    }
-  }, [logoDataUrl]);
-
-  // Carica prenotazioni dal backend quando cambia il bus
+  // carica prenotazioni al cambio bus
   useEffect(() => {
     loadBookings(busType);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [busType]);
 
+  // carica mete + date (trips) e attiva realtime
+  useEffect(() => {
+    async function loadTrips() {
+      try {
+        setLoadingTrips(true);
+        const { data, error } = await supabase
+          .from("trips")
+          .select("*")
+          .order("date", { ascending: true });
+
+        if (error) throw error;
+        setTrips(data || []);
+
+        if ((data || []).length > 0) {
+          setForm((f) => ({
+            ...f,
+            destinazione: f.destinazione || data[0].name,
+          }));
+        }
+      } catch (err) {
+        console.error(err);
+        setMessage("Errore nel caricare mete e date dal server.");
+      } finally {
+        setLoadingTrips(false);
+      }
+    }
+
+    loadTrips();
+
+    const channel = supabase
+      .channel("public:trips")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "trips" },
+        (payload) => {
+          setTrips((current) => {
+            let next = [...current];
+            if (payload.eventType === "INSERT") {
+              next.push(payload.new);
+            } else if (payload.eventType === "UPDATE") {
+              next = next.map((t) =>
+                t.id === payload.new.id ? payload.new : t
+              );
+            } else if (payload.eventType === "DELETE") {
+              next = next.filter((t) => t.id !== payload.old.id);
+            }
+            return next.sort((a, b) =>
+              (a.date || "").localeCompare(b.date || "")
+            );
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // ---- FUNZIONI PRENOTAZIONI ----
+
   async function loadBookings(currentBusType) {
     try {
       setLoadingBookings(true);
-      setMessage("");
       const { data, error } = await supabase
         .from("bookings")
         .select("*")
@@ -116,9 +158,7 @@ export default function App() {
       setBookings(data || []);
     } catch (err) {
       console.error(err);
-      setMessage(
-        "Errore nel caricare le prenotazioni dal server. Controlla la connessione o Supabase."
-      );
+      setMessage("Errore nel caricare le prenotazioni dal server.");
     } finally {
       setLoadingBookings(false);
     }
@@ -133,36 +173,6 @@ export default function App() {
     setSelectedSeat((prev) => (prev === id ? null : id));
   }
 
-  function handleLogoUpload(e) {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onload = () => setLogoDataUrl(String(reader.result));
-    reader.readAsDataURL(f);
-  }
-
-  function addDestination() {
-    const name = window.prompt("Nuova destinazione:");
-    if (!name) return;
-    setDestinations((prev) => [...prev, name]);
-  }
-
-  function editDestination(index) {
-    const newName = window.prompt(
-      "Modifica destinazione:",
-      destinations[index]
-    );
-    if (!newName) return;
-    setDestinations((prev) =>
-      prev.map((d, i) => (i === index ? newName : d))
-    );
-  }
-
-  function removeDestination(index) {
-    if (!window.confirm("Eliminare questa destinazione?")) return;
-    setDestinations((prev) => prev.filter((_, i) => i !== index));
-  }
-
   async function handleBook() {
     if (!selectedSeat) {
       alert("Seleziona prima un posto sul bus.");
@@ -172,26 +182,34 @@ export default function App() {
       alert("Compila tutti i campi obbligatori.");
       return;
     }
+    if (!form.dataPartenza) {
+      alert("Inserisci la data di partenza.");
+      return;
+    }
+    if (!form.destinazione) {
+      alert("Seleziona una meta di viaggio.");
+      return;
+    }
 
     const seatAlreadyBooked = bookings.some(
       (b) => Number(b.seat) === Number(selectedSeat)
     );
     if (seatAlreadyBooked) {
-      alert("Questo posto è già stato prenotato. Aggiorna la pagina.");
+      alert("Questo posto è già prenotato. Aggiorna la pagina.");
       await loadBookings(busType);
       return;
     }
 
     try {
-      setMessage("Invio prenotazione...");
+      setMessage("Salvo la prenotazione...");
       const { error } = await supabase.from("bookings").insert({
         seat: selectedSeat,
         nome: form.nome,
         cognome: form.cognome,
         telefono: form.telefono,
         partenza: form.partenza,
-        destinazione:
-          form.destinazione || destinations[0] || DEFAULT_DESTINATIONS[0],
+        data_partenza: form.dataPartenza,
+        destinazione: form.destinazione,
         busType: String(busType),
       });
 
@@ -199,17 +217,18 @@ export default function App() {
 
       setMessage("Prenotazione salvata con successo!");
       setSelectedSeat(null);
-      setForm({
+      setForm((f) => ({
+        ...f,
         nome: "",
         cognome: "",
         telefono: "",
         partenza: "",
-        destinazione: destinations[0] || DEFAULT_DESTINATIONS[0],
-      });
+        dataPartenza: "",
+      }));
       await loadBookings(busType);
     } catch (err) {
       console.error(err);
-      setMessage("Errore nel salvare la prenotazione. Controlla Supabase.");
+      setMessage("Errore nel salvare la prenotazione.");
     }
   }
 
@@ -226,25 +245,78 @@ export default function App() {
     }
   }
 
+  // ---- FUNZIONI METE (trips) ----
+
+  async function addTrip() {
+    const name = window.prompt("Nuova meta (es. Milano):");
+    if (!name) return;
+    const date = window.prompt(
+      'Data viaggio (formato "YYYY-MM-DD", es. 2025-12-31):'
+    );
+    if (!date) return;
+
+    try {
+      const { error } = await supabase.from("trips").insert({ name, date });
+      if (error) throw error;
+    } catch (err) {
+      console.error(err);
+      setMessage("Errore nell'aggiungere la meta.");
+    }
+  }
+
+  async function editTrip(trip) {
+    const name = window.prompt("Modifica meta:", trip.name);
+    if (!name) return;
+    const date = window.prompt(
+      'Modifica data (YYYY-MM-DD):',
+      trip.date || ""
+    );
+    if (!date) return;
+
+    try {
+      const { error } = await supabase
+        .from("trips")
+        .update({ name, date })
+        .eq("id", trip.id);
+      if (error) throw error;
+    } catch (err) {
+      console.error(err);
+      setMessage("Errore nel modificare la meta.");
+    }
+  }
+
+  async function removeTrip(trip) {
+    if (!window.confirm(`Eliminare la meta "${trip.name}"?`)) return;
+    try {
+      const { error } = await supabase
+        .from("trips")
+        .delete()
+        .eq("id", trip.id);
+      if (error) throw error;
+    } catch (err) {
+      console.error(err);
+      setMessage("Errore nell'eliminare la meta.");
+    }
+  }
+
+  // ---- RENDER ----
+
   return (
     <div className="min-h-screen p-4 sm:p-6 bg-slate-50">
       <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-md p-4 sm:p-6">
-        {/* Header */}
+        {/* HEADER */}
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div className="flex items-center gap-4">
-            {logoDataUrl ? (
-              <img
-                src={logoDataUrl}
-                alt="DelGrosso logo"
-                className="w-28 h-16 object-contain"
-              />
-            ) : (
-              <div className="w-28 h-16 flex items-center justify-center bg-slate-100 rounded-lg font-semibold text-xs text-center">
-                DELGROSSO
-                <br />
-                VIAGGI
-              </div>
-            )}
+            {/* LOGO */}
+            <img
+              src="/delgrosso-logo.png"
+              alt="DelGrosso Viaggi & Limousine Bus"
+              className="h-16 object-contain"
+              onError={(e) => {
+                // se il logo non si carica, mostra un fallback testuale
+                e.currentTarget.style.display = "none";
+              }}
+            />
 
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold">
@@ -256,15 +328,12 @@ export default function App() {
             </div>
           </div>
 
-          <div className="flex flex-col items-start sm:items-end gap-2">
-            <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-col items-start sm:items-end gap-2 text-sm">
+            <div className="flex items-center gap-2">
               <span>Tipo bus:</span>
               <select
                 value={busType}
-                onChange={(e) => {
-                  setBusType(e.target.value);
-                  setSelectedSeat(null);
-                }}
+                onChange={(e) => setBusType(e.target.value)}
                 className="border rounded px-2 py-1 text-sm"
               >
                 <option value="53">GT 53 posti</option>
@@ -272,27 +341,20 @@ export default function App() {
               </select>
             </div>
             <div className="text-xs text-slate-500">
-              Prenotazioni salvate su Supabase (tabella <code>bookings</code>).
-            </div>
-            <div className="text-xs">
-              <label className="inline-flex items-center gap-2 cursor-pointer">
-                <span>Logo:</span>
-                <input type="file" accept="image/*" onChange={handleLogoUpload} />
-              </label>
+              Prenotazioni su Supabase (tabella <code>bookings</code>).
             </div>
           </div>
         </header>
 
-        {/* Messaggi */}
         {message && (
           <div className="mb-4 text-xs px-3 py-2 rounded bg-amber-50 border border-amber-200 text-amber-800">
             {message}
           </div>
         )}
 
-        {/* Main layout */}
+        {/* MAIN */}
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Seat map + booking form */}
+          {/* Piantina + form */}
           <section className="lg:col-span-2">
             <h2 className="font-semibold mb-2">
               Piantina posti — Bus GT {busType} posti
@@ -300,7 +362,7 @@ export default function App() {
 
             <div className="bg-slate-50 border rounded-xl p-4">
               <div className="flex flex-col md:flex-row gap-6">
-                {/* Seat map */}
+                {/* Piantina */}
                 <div className="flex-1">
                   {loadingBookings && (
                     <div className="text-xs text-slate-500 mb-2">
@@ -313,7 +375,6 @@ export default function App() {
                         key={rIndex}
                         className="grid grid-cols-[repeat(2,auto)_1fr_repeat(2,auto)] items-center gap-3"
                       >
-                        {/* lato sinistro */}
                         <Seat
                           seat={row[0]}
                           status={
@@ -341,12 +402,10 @@ export default function App() {
                           onClick={handleSeatClick}
                         />
 
-                        {/* corridoio */}
                         <div className="h-10 flex items-center justify-center text-[10px] text-slate-400">
                           {rIndex === 0 ? "FRONTE" : ""}
                         </div>
 
-                        {/* lato destro */}
                         <Seat
                           seat={row[2]}
                           status={
@@ -376,13 +435,14 @@ export default function App() {
                       </div>
                     ))}
                   </div>
+
                   <div className="mt-3 text-xs text-slate-500 flex flex-wrap gap-3">
                     <span className="inline-flex items-center gap-1">
                       <span className="w-3 h-3 border border-gray-300 rounded inline-block" />{" "}
                       Libero
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <span className="w-3 h-3 bg-blue-500 rounded inline-block" />{" "}
+                      <span className="w-3 h-3 bg-emerald-500 rounded inline-block" />{" "}
                       Selezionato
                     </span>
                     <span className="inline-flex items-center gap-1">
@@ -392,9 +452,9 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Booking form */}
+                {/* Form prenotazione */}
                 <div className="w-full md:w-80">
-                  <div className="p-3 border rounded-lg bg-white">
+                  <div className="p-3 border rounded-lg bg-white text-sm">
                     <h3 className="font-medium mb-1">Prenota posto</h3>
                     <p className="text-xs text-slate-500 mb-3">
                       Posto selezionato:{" "}
@@ -424,7 +484,10 @@ export default function App() {
                         placeholder="Telefono"
                         value={form.telefono}
                         onChange={(e) =>
-                          setForm((f) => ({ ...f, telefono: e.target.value }))
+                          setForm((f) => ({
+                            ...f,
+                            telefono: e.target.value,
+                          }))
                         }
                         className="border px-2 py-1 rounded"
                       />
@@ -437,7 +500,22 @@ export default function App() {
                         className="border px-2 py-1 rounded"
                       />
 
-                      <label className="text-xs mt-1">Destinazione</label>
+                      <label className="text-xs mt-1">
+                        Data di partenza (viaggio)
+                      </label>
+                      <input
+                        type="date"
+                        value={form.dataPartenza}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            dataPartenza: e.target.value,
+                          }))
+                        }
+                        className="border px-2 py-1 rounded"
+                      />
+
+                      <label className="text-xs mt-1">Meta viaggio</label>
                       <select
                         value={form.destinazione}
                         onChange={(e) =>
@@ -448,31 +526,37 @@ export default function App() {
                         }
                         className="border px-2 py-1 rounded text-sm"
                       >
-                        {destinations.map((d, i) => (
-                          <option key={i} value={d}>
-                            {d}
+                        {trips.map((t) => (
+                          <option key={t.id} value={t.name}>
+                            {t.name}{" "}
+                            {t.date ? `(${t.date})` : ""}
                           </option>
                         ))}
                       </select>
+                      {loadingTrips && (
+                        <p className="text-[11px] text-slate-500">
+                          Carico mete dal server...
+                        </p>
+                      )}
 
                       <div className="flex gap-2 mt-3">
                         <button
                           onClick={handleBook}
-                          className="flex-1 px-3 py-1.5 rounded bg-green-600 text-white text-sm hover:bg-green-700"
+                          className="flex-1 px-3 py-1.5 rounded bg-emerald-600 text-white text-sm hover:bg-emerald-700"
                         >
-                          Conferma prenotazione
+                          Conferma
                         </button>
                         <button
                           onClick={() => {
                             setSelectedSeat(null);
-                            setForm({
+                            setForm((f) => ({
+                              ...f,
                               nome: "",
                               cognome: "",
                               telefono: "",
                               partenza: "",
-                              destinazione:
-                                destinations[0] || DEFAULT_DESTINATIONS[0],
-                            });
+                              dataPartenza: "",
+                            }));
                           }}
                           className="px-3 py-1.5 rounded border text-sm"
                         >
@@ -486,26 +570,34 @@ export default function App() {
             </div>
           </section>
 
-          {/* Destinazioni + elenco prenotazioni */}
+          {/* Aside: mete & prenotazioni */}
           <aside className="space-y-4">
-            <div className="p-4 bg-white border rounded-lg">
-              <h3 className="font-medium mb-2">Destinazioni</h3>
-              <ul className="space-y-2 text-sm">
-                {destinations.map((d, i) => (
+            {/* Mete & date */}
+            <div className="p-4 bg-white border rounded-lg text-sm">
+              <h3 className="font-medium mb-2">Mete &amp; date</h3>
+              <ul className="space-y-2">
+                {trips.map((t) => (
                   <li
-                    key={i}
+                    key={t.id}
                     className="flex justify-between items-center gap-2"
                   >
-                    <span>{d}</span>
+                    <span>
+                      {t.name}{" "}
+                      {t.date && (
+                        <span className="text-xs text-slate-500">
+                          ({t.date})
+                        </span>
+                      )}
+                    </span>
                     <div className="flex gap-2 text-xs">
                       <button
-                        onClick={() => editDestination(i)}
+                        onClick={() => editTrip(t)}
                         className="underline"
                       >
                         Modifica
                       </button>
                       <button
-                        onClick={() => removeDestination(i)}
+                        onClick={() => removeTrip(t)}
                         className="text-red-600"
                       >
                         Elimina
@@ -513,20 +605,27 @@ export default function App() {
                     </div>
                   </li>
                 ))}
+                {trips.length === 0 && !loadingTrips && (
+                  <li className="text-xs text-slate-500">
+                    Nessuna meta. Aggiungine una.
+                  </li>
+                )}
               </ul>
+
               <button
-                onClick={addDestination}
+                onClick={addTrip}
                 className="mt-3 px-3 py-1.5 rounded border text-sm w-full"
               >
-                Aggiungi destinazione
+                Aggiungi meta
               </button>
             </div>
 
-            <div className="p-4 bg-white border rounded-lg">
+            {/* Lista prenotazioni */}
+            <div className="p-4 bg-white border rounded-lg text-sm">
               <h3 className="font-medium mb-2">
                 Prenotazioni ({bookings.length})
               </h3>
-              <div className="space-y-2 max-h-72 overflow-auto text-sm">
+              <div className="space-y-2 max-h-72 overflow-auto">
                 {bookings.map((b) => (
                   <div
                     key={b.id}
@@ -534,21 +633,32 @@ export default function App() {
                   >
                     <div>
                       <div className="font-medium">
-                        {b.nome} {b.cognome} — posto {b.seat}
+                        {b.nome} {b.cognome} — posto {b.seat} (bus {b.busType})
                       </div>
                       <div className="text-xs text-slate-500">
                         {b.partenza} → {b.destinazione}
                       </div>
                       <div className="text-xs text-slate-500">
+                        Data partenza:{" "}
+                        {b.data_partenza &&
+                          new Date(b.data_partenza).toLocaleDateString("it-IT")}
+                      </div>
+                      <div className="text-xs text-slate-500">
                         Tel: {b.telefono}
                       </div>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
                       {b.created_at && (
-                        <div className="text-[10px] text-slate-400">
-                          {new Date(b.created_at).toLocaleString()}
+                        <div className="text-[11px] text-slate-400 mt-1">
+                          Prenotato il{" "}
+                          {new Date(b.created_at).toLocaleDateString("it-IT")}{" "}
+                          alle{" "}
+                          {new Date(b.created_at).toLocaleTimeString("it-IT", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </div>
                       )}
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
                       <button
                         onClick={() => handleCancelBooking(b.id)}
                         className="text-xs text-red-600"
@@ -567,15 +677,6 @@ export default function App() {
             </div>
           </aside>
         </main>
-
-        <footer className="mt-6 text-xs text-slate-500 leading-relaxed">
-          <p>
-            Nota: questa app usa Supabase come backend per salvare le
-            prenotazioni (tabella <code>bookings</code>), mentre logo e
-            destinazioni sono salvati localmente nel browser dell&apos;admin
-            (localStorage).
-          </p>
-        </footer>
       </div>
     </div>
   );
