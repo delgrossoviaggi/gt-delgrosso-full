@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "./supabase";
+import logo from "./assets/logo.png"; // <-- nuovo import del logo
 
 /**
  * DELGROSSO VIAGGI & LIMOUSINE BUS
@@ -350,7 +351,7 @@ export default function App() {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div className="flex items-center gap-4">
             <img
-              src="/delgrosso-logo.png"
+              src={logo} // <-- ora usa il file src/assets/logo.png
               alt="DelGrosso Viaggi & Limousine Bus"
               className="h-16 object-contain"
             />
@@ -587,8 +588,7 @@ export default function App() {
                       >
                         {trips.map((t) => (
                           <option key={t.id} value={t.name}>
-                            {t.name}{" "}
-                            {t.date ? `(${t.date})` : ""}
+                            {t.name} {t.date ? `(${t.date})` : ""}
                           </option>
                         ))}
                       </select>
