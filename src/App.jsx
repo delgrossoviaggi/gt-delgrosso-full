@@ -1,620 +1,347 @@
-// ==============================================
-// DELGROSSO VIAGGI & LIMOUSINE BUS
-// SISTEMA COMPLETO PRENOTAZIONI GT
-// Versione: Professionale Light Mode
-// ==============================================
+import React, { useState } from "react";
 
-import React, { useEffect, useState } from "react";
-import { supabase } from "./supabase";
-import logo from "./assets/logo.png";
-
-// --------------------------------------------------
-// UTILS
-// --------------------------------------------------
-function generateSeats(total) {
-  const rows = [];
-  let n = 1;
-  while (n <= total) {
-    const row = [];
-    for (let i = 0; i < 4 && n <= total; i++) {
-      row.push({ id: n, label: String(n) });
-      n++;
+function Navbar() {
+  const handleScroll = (id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
     }
-    rows.push(row);
-  }
-  return rows;
-}
-
-function Seat({ seat, booked, selected, onClick }) {
-  if (!seat) return <div className="seat empty"></div>;
-
-  let cls = "seat";
-  if (booked) cls += " booked";
-  else if (selected) cls += " selected";
+  };
 
   return (
-    <div className={cls} onClick={() => !booked && onClick(seat.id)}>
-      {seat.label}
-    </div>
+    <nav className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur border-b border-gray-200 z-20">
+      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div
+          className="text-xl font-extrabold tracking-tight text-indigo-700 cursor-pointer"
+          onClick={() => handleScroll("top")}
+        >
+          GT Delgrosso
+        </div>
+
+        <div className="hidden sm:flex gap-6 text-sm font-medium text-gray-700">
+          <button onClick={() => handleScroll("top")} className="hover:text-indigo-600">
+            Home
+          </button>
+          <button onClick={() => handleScroll("services")} className="hover:text-indigo-600">
+            Servizi
+          </button>
+          <button onClick={() => handleScroll("booking")} className="hover:text-indigo-600">
+            Prenota
+          </button>
+          <button onClick={() => handleScroll("contacts")} className="hover:text-indigo-600">
+            Contatti
+          </button>
+        </div>
+      </div>
+    </nav>
   );
 }
 
-// --------------------------------------------------
-// COMPONENTE PRINCIPALE
-// --------------------------------------------------
-export default function App() {
-  const ADMIN_PASSWORD = "DEL2025BUS";
+function Hero() {
+  const handleScrollBooking = () => {
+    const el = document.getElementById("booking");
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  };
 
-  // stati base
-  const [busType, setBusType] = useState("53");
-  const [layout, setLayout] = useState(generateSeats(53));
+  return (
+    <section
+      id="top"
+      className="min-h-screen flex items-center bg-gradient-to-b from-indigo-50 to-white"
+    >
+      <div className="max-w-5xl mx-auto px-4 pt-20 pb-16 flex flex-col md:flex-row items-center gap-10">
+        <div className="flex-1">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4 leading-tight">
+            Benvenuto su <span className="text-indigo-700">GT Delgrosso</span>
+            <br />
+            il tuo viaggio inizia qui 🚍
+          </h1>
+          <p className="text-gray-600 text-lg mb-6">
+            Prenota facilmente il tuo posto sul bus discoteca o sugli autobus Gran Turismo.
+            Gestisci le tue serate, gite e viaggi di gruppo direttamente online.
+          </p>
 
-  const [bookings, setBookings] = useState([]);
-  const [trips, setTrips] = useState([]);
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={handleScrollBooking}
+              className="px-5 py-3 text-sm font-semibold rounded-full bg-indigo-600 text-white shadow hover:bg-indigo-700 transition"
+            >
+              Prenota ora
+            </button>
+            <a
+              href="#services"
+              className="px-5 py-3 text-sm font-semibold rounded-full border border-indigo-200 text-indigo-700 hover:bg-indigo-50 transition"
+            >
+              Scopri i servizi
+            </a>
+          </div>
+        </div>
 
-  const [selectedSeat, setSelectedSeat] = useState(null);
+        <div className="flex-1 w-full">
+          <div className="rounded-3xl border border-indigo-100 bg-white shadow-sm p-6">
+            <h2 className="text-lg font-semibold text-gray-800 mb-3">
+              Perché scegliere GT Delgrosso?
+            </h2>
+            <ul className="space-y-2 text-sm text-gray-700">
+              <li>• Bus discoteca per feste, compleanni, addii al celibato/nubilato</li>
+              <li>• Autobus Gran Turismo per viaggi lunghi e gite organizzate</li>
+              <li>• Prenotazione semplice e veloce, anche da smartphone</li>
+              <li>• Servizio sicuro, puntuale e professionale</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
+function ServicesSection() {
+  return (
+    <section id="services" className="py-16 bg-white">
+      <div className="max-w-5xl mx-auto px-4">
+        <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+          I nostri servizi
+        </h2>
+        <p className="text-gray-600 text-center max-w-2xl mx-auto mb-10">
+          Scegli il tipo di bus più adatto al tuo evento: dalla serata in discoteca al viaggio
+          di più giorni con il massimo comfort.
+        </p>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="rounded-3xl border border-indigo-100 bg-indigo-50 p-6">
+            <h3 className="text-xl font-semibold text-indigo-800 mb-2">Bus Discoteca</h3>
+            <p className="text-sm text-indigo-900 mb-3">
+              Luci, musica e divertimento già dal viaggio. Ideale per:
+            </p>
+            <ul className="text-sm text-indigo-900 space-y-1">
+              <li>• Serate in discoteca</li>
+              <li>• Compleanni ed eventi privati</li>
+              <li>• Addii al celibato/nubilato</li>
+            </ul>
+          </div>
+
+          <div className="rounded-3xl border border-gray-200 bg-gray-50 p-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Autobus Gran Turismo</h3>
+            <p className="text-sm text-gray-700 mb-3">
+              Comfort e sicurezza per viaggi più lunghi, perfetto per:
+            </p>
+            <ul className="text-sm text-gray-700 space-y-1">
+              <li>• Gite scolastiche e parrocchiali</li>
+              <li>• Viaggi di gruppo e associazioni</li>
+              <li>• Trasferte per eventi e concerti</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function BookingForm() {
   const [form, setForm] = useState({
-    nome: "",
-    cognome: "",
-    telefono: "",
-    partenza: "",
-    dataPartenza: "",
-    destinazione: ""
+    name: "",
+    email: "",
+    date: "",
+    type: "bus-discoteca",
+    seats: "",
+    from: "",
+    to: "",
+    notes: "",
   });
 
-  const [loadingBookings, setLoadingBookings] = useState(false);
-  const [loadingTrips, setLoadingTrips] = useState(false);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
 
-  const [message, setMessage] = useState("");
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    // Per ora simuliamo l'invio
+    console.log("Richiesta prenotazione:", form);
+    alert("Richiesta di prenotazione inviata! (per ora solo di prova 😄)");
+    setForm((prev) => ({ ...prev, notes: "" }));
+  };
 
-  // admin
-  const [adminMode, setAdminMode] = useState(false);
-  const [adminInput, setAdminInput] = useState("");
-
-  const capacity = busType === "53" ? 53 : 63;
-
-  // --------------------------------------------------
-  // CARICAMENTO PRENOTAZIONI
-  // --------------------------------------------------
-  async function loadBookings() {
-    setLoadingBookings(true);
-    setMessage("");
-
-    const { data, error } = await supabase
-      .from("bookings")
-      .select("*")
-      .eq("busType", String(busType))
-      .order("seat", { ascending: true });
-
-    if (error) {
-      console.error(error);
-      setMessage("Errore nel caricamento delle prenotazioni.");
-    } else {
-      setBookings(data);
-    }
-
-    setLoadingBookings(false);
-  }
-
-  // --------------------------------------------------
-  // CARICAMENTO METE (TRIPS)
-  // --------------------------------------------------
-  async function loadTrips() {
-    setLoadingTrips(true);
-
-    const { data, error } = await supabase
-      .from("trips")
-      .select("*")
-      .order("date", { ascending: true });
-
-    if (error) {
-      console.error(error);
-      setMessage("Errore nel caricamento delle mete.");
-    } else {
-      setTrips(data);
-
-      // imposta meta default
-      if (data.length > 0 && !form.destinazione) {
-        setForm((f) => ({ ...f, destinazione: data[0].name }));
-      }
-    }
-
-    setLoadingTrips(false);
-  }
-
-  // --------------------------------------------------
-  // EFFETTI INIZIALI
-  // --------------------------------------------------
-  useEffect(() => {
-    loadBookings();
-  }, [busType]);
-
-  useEffect(() => {
-    loadTrips();
-  }, []);
-
-  useEffect(() => {
-    setLayout(generateSeats(Number(busType)));
-    setSelectedSeat(null);
-  }, [busType]);
-
-  // --------------------------------------------------
-  // SELEZIONE POSTO
-  // --------------------------------------------------
-  function selectSeat(id) {
-    const isBooked = bookings.some((b) => Number(b.seat) === Number(id));
-    if (isBooked) return;
-
-    setSelectedSeat((prev) => (prev === id ? null : id));
-  }
-
-  // --------------------------------------------------
-  // SALVA PRENOTAZIONE
-  // --------------------------------------------------
-  async function saveBooking() {
-    setMessage("");
-
-    if (!selectedSeat) {
-      alert("Seleziona un posto.");
-      return;
-    }
-
-    if (!form.nome || !form.cognome || !form.telefono || !form.partenza) {
-      alert("Compila tutti i campi.");
-      return;
-    }
-
-    if (!form.dataPartenza) {
-      alert("Inserisci la data del viaggio.");
-      return;
-    }
-
-    const payload = {
-      seat: selectedSeat,
-      nome: form.nome,
-      cognome: form.cognome,
-      telefono: form.telefono,
-      partenza: form.partenza,
-      data_partenza: form.dataPartenza,
-      destinazione: form.destinazione,
-      busType: String(busType)
-    };
-
-    const { error } = await supabase.from("bookings").insert(payload);
-
-    if (error) {
-      console.error(error);
-      setMessage("Errore nel salvataggio della prenotazione.");
-      return;
-    }
-
-    setMessage("Prenotazione salvata correttamente!");
-    setSelectedSeat(null);
-    setForm({
-      nome: "",
-      cognome: "",
-      telefono: "",
-      partenza: "",
-      dataPartenza: "",
-      destinazione: trips.length > 0 ? trips[0].name : ""
-    });
-
-    loadBookings();
-  }
-
-  // --------------------------------------------------
-  // CANCELLA PRENOTAZIONE
-  // --------------------------------------------------
-  async function cancelBooking(id) {
-    if (!window.confirm("Vuoi eliminare questa prenotazione?")) return;
-
-    const { error } = await supabase
-      .from("bookings")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      console.error(error);
-      setMessage("Errore nell'eliminare la prenotazione.");
-      return;
-    }
-
-    setMessage("Prenotazione eliminata.");
-    loadBookings();
-  }
-
-  // --------------------------------------------------
-  // WHATSAPP PER SINGOLA PRENOTAZIONE
-  // --------------------------------------------------
-  function sendWhatsapp(booking) {
-    const phone = String(booking.telefono || "").replace(/\D/g, "");
-    if (!phone) {
-      alert("Numero telefono non valido per WhatsApp.");
-      return;
-    }
-
-    const dataPartenzaText = booking.data_partenza
-      ? new Date(booking.data_partenza).toLocaleDateString("it-IT")
-      : "";
-
-    const msg = encodeURIComponent(
-      `Ciao ${booking.nome} ${booking.cognome}, la tua prenotazione per il viaggio ${booking.destinazione} del ${dataPartenzaText}, posto ${booking.seat}, è registrata da Delgrosso Viaggi & Limousine Bus.`
-    );
-
-    const url = `https://wa.me/${phone}?text=${msg}`;
-    window.open(url, "_blank");
-  }
-
-  // --------------------------------------------------
-  // STAMPA LISTA (usa stampa browser)
-  // --------------------------------------------------
-  function printList() {
-    window.print();
-  }
-
-  // --------------------------------------------------
-  // RENDER
-  // --------------------------------------------------
   return (
-    <div className="page">
+    <section id="booking" className="py-16 bg-indigo-50">
+      <div className="max-w-5xl mx-auto px-4">
+        <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+          Richiedi una prenotazione
+        </h2>
+        <p className="text-gray-700 text-center max-w-2xl mx-auto mb-10">
+          Compila il form con i dettagli del tuo viaggio. Ti ricontatteremo per confermare
+          disponibilità, orari e prezzo.
+        </p>
 
-      {/* HEADER */}
-      <header className="header">
-        <div className="header-left">
-          <img src={logo} alt="Logo DelGrosso" className="logo" />
-          <div>
-            <h1 className="title">DELGROSSO VIAGGI & LIMOUSINE BUS</h1>
-            <p className="subtitle">Sistema completo prenotazioni GT</p>
-          </div>
-        </div>
-
-        <div className="header-right">
-
-          <div className="bus-selector">
-            <label>Tipo Bus:</label>
-            <select
-              value={busType}
-              onChange={(e) => setBusType(e.target.value)}
-            >
-              <option value="53">GT 53 Posti</option>
-              <option value="63">GT 63 Posti</option>
-            </select>
-          </div>
-
-          {!adminMode ? (
-            <div className="admin-login">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-3xl shadow-sm border border-indigo-100 p-6 md:p-8 space-y-4"
+        >
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nome e cognome
+              </label>
               <input
-                type="password"
-                placeholder="Password admin"
-                value={adminInput}
-                onChange={(e) => setAdminInput(e.target.value)}
+                type="text"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                required
+                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Mario Rossi"
               />
-              <button
-                onClick={() => {
-                  if (adminInput === ADMIN_PASSWORD) {
-                    setAdminMode(true);
-                    setAdminInput("");
-                    setMessage("Accesso amministratore eseguito.");
-                  } else {
-                    alert("Password errata.");
-                  }
-                }}
-              >
-                Entra
-              </button>
             </div>
-          ) : (
-            <div className="admin-badge">Admin attivo</div>
-          )}
 
-        </div>
-      </header>
-
-      {/* MESSAGGIO UTENTE */}
-      {message && <div className="message">{message}</div>}
-
-      {/* CONTENUTO PRINCIPALE */}
-      <main className="main-content">
-
-        {/* PIANTINA BUS */}
-        <section className="section">
-          <h2 className="section-title">
-            Piantina posti — Bus {busType} posti
-          </h2>
-
-          {loadingBookings && (
-            <p className="loading">Caricamento prenotazioni…</p>
-          )}
-
-          <div className="bus-map">
-            {layout.map((row, i) => (
-              <div className="bus-row" key={i}>
-                <Seat
-                  seat={row[0]}
-                  booked={
-                    !!row[0] &&
-                    bookings.some((b) => Number(b.seat) === row[0].id)
-                  }
-                  selected={selectedSeat === row[0]?.id}
-                  onClick={selectSeat}
-                />
-                <Seat
-                  seat={row[1]}
-                  booked={
-                    !!row[1] &&
-                    bookings.some((b) => Number(b.seat) === row[1].id)
-                  }
-                  selected={selectedSeat === row[1]?.id}
-                  onClick={selectSeat}
-                />
-
-                <div className="aisle"></div>
-
-                <Seat
-                  seat={row[2]}
-                  booked={
-                    !!row[2] &&
-                    bookings.some((b) => Number(b.seat) === row[2].id)
-                  }
-                  selected={selectedSeat === row[2]?.id}
-                  onClick={selectSeat}
-                />
-                <Seat
-                  seat={row[3]}
-                  booked={
-                    !!row[3] &&
-                    bookings.some((b) => Number(b.seat) === row[3].id)
-                  }
-                  selected={selectedSeat === row[3]?.id}
-                  onClick={selectSeat}
-                />
-              </div>
-            ))}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                onChange={handleChange}
+                required
+                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="mario@example.com"
+              />
+            </div>
           </div>
 
-          <div className="legend">
-            <div className="legend-item">
-              <span className="seat free"></span> Libero
-            </div>
-            <div className="legend-item">
-              <span className="seat selected"></span> Selezionato
-            </div>
-            <div className="legend-item">
-              <span className="seat booked"></span> Occupato
-            </div>
-          </div>
-        </section>
-
-        {/* FORM PRENOTAZIONE */}
-        <section className="section form-section">
-          <h2 className="section-title">Prenota Posto</h2>
-
-          <div className="form-grid">
-
-            <div className="form-group">
-              <label>Posto selezionato</label>
-              <input value={selectedSeat || "Nessun posto"} disabled />
-            </div>
-
-            <div className="form-group">
-              <label>Nome</label>
-              <input
-                value={form.nome}
-                onChange={(e) => setForm({ ...form, nome: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Cognome</label>
-              <input
-                value={form.cognome}
-                onChange={(e) => setForm({ ...form, cognome: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Telefono</label>
-              <input
-                value={form.telefono}
-                onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Luogo di partenza</label>
-              <input
-                value={form.partenza}
-                onChange={(e) => setForm({ ...form, partenza: e.target.value })}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Data di partenza</label>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Data
+              </label>
               <input
                 type="date"
-                value={form.dataPartenza}
-                onChange={(e) =>
-                  setForm({ ...form, dataPartenza: e.target.value })
-                }
+                name="date"
+                value={form.date}
+                onChange={handleChange}
+                required
+                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
 
-            <div className="form-group">
-              <label>Meta viaggio</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Tipo di bus
+              </label>
               <select
-                value={form.destinazione}
-                onChange={(e) =>
-                  setForm({ ...form, destinazione: e.target.value })
-                }
+                name="type"
+                value={form.type}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                {trips.map((t) => (
-                  <option key={t.id} value={t.name}>
-                    {t.name} {t.date && `(${t.date})`}
-                  </option>
-                ))}
+                <option value="bus-discoteca">Bus discoteca</option>
+                <option value="gran-turismo">Autobus Gran Turismo</option>
               </select>
             </div>
 
-            <button className="btn primary" onClick={saveBooking}>
-              Conferma Prenotazione
-            </button>
-
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Numero di posti
+              </label>
+              <input
+                type="number"
+                name="seats"
+                value={form.seats}
+                onChange={handleChange}
+                min="1"
+                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Es. 30"
+              />
+            </div>
           </div>
-        </section>
 
-        {/* LISTA PRENOTAZIONI */}
-        <section className="section">
-          <h2 className="section-title">
-            Prenotazioni ({bookings.length}) — Bus {busType}
-          </h2>
-
-          {adminMode && bookings.length > 0 && (
-            <button className="btn" onClick={printList}>
-              Stampa lista partecipanti
-            </button>
-          )}
-
-          <div className="booking-list">
-            {bookings.map((b) => (
-              <div className="booking-card" key={b.id}>
-                <div className="booking-main">
-                  <strong>
-                    Posto {b.seat}: {b.nome} {b.cognome}
-                  </strong>
-                  <p>
-                    {b.partenza} → {b.destinazione}
-                  </p>
-                  <p>Tel: {b.telefono}</p>
-                  {b.data_partenza && (
-                    <p>
-                      Data:{" "}
-                      {new Date(b.data_partenza).toLocaleDateString("it-IT")}
-                    </p>
-                  )}
-                </div>
-
-                <div className="booking-actions">
-                  <button
-                    className="btn whatsapp small"
-                    onClick={() => sendWhatsapp(b)}
-                  >
-                    WhatsApp
-                  </button>
-
-                  {adminMode && (
-                    <button
-                      className="btn danger small"
-                      onClick={() => cancelBooking(b.id)}
-                    >
-                      Cancella
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* AREA ADMIN: METE */}
-        {adminMode && (
-          <section className="section">
-            <h2 className="section-title">Gestione Mete</h2>
-
-            {/* Lista mete */}
-            <div className="trip-list">
-              {trips.map((t) => (
-                <div key={t.id} className="trip-card">
-                  <div>
-                    <strong>{t.name}</strong>
-                    {t.date && (
-                      <span className="trip-date"> — {t.date}</span>
-                    )}
-                  </div>
-
-                  <div className="trip-actions">
-                    <button
-                      className="btn small"
-                      onClick={async () => {
-                        const name = prompt(
-                          "Nuovo nome meta:",
-                          t.name
-                        );
-                        if (!name) return;
-
-                        const date = prompt(
-                          "Nuova data (YYYY-MM-DD):",
-                          t.date
-                        );
-                        if (!date) return;
-
-                        const { error } = await supabase
-                          .from("trips")
-                          .update({ name, date })
-                          .eq("id", t.id);
-
-                        if (error) {
-                          alert("Errore modifica meta");
-                        } else {
-                          loadTrips();
-                        }
-                      }}
-                    >
-                      Modifica
-                    </button>
-
-                    <button
-                      className="btn danger small"
-                      onClick={async () => {
-                        if (!window.confirm("Eliminare questa meta?"))
-                          return;
-
-                        const { error } = await supabase
-                          .from("trips")
-                          .delete()
-                          .eq("id", t.id);
-
-                        if (error) {
-                          alert("Errore eliminazione meta");
-                        } else {
-                          loadTrips();
-                        }
-                      }}
-                    >
-                      Elimina
-                    </button>
-                  </div>
-                </div>
-              ))}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Partenza
+              </label>
+              <input
+                type="text"
+                name="from"
+                value={form.from}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Es. Pescara"
+              />
             </div>
 
-            {/* Aggiungi meta */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Destinazione
+              </label>
+              <input
+                type="text"
+                name="to"
+                value={form.to}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholder="Es. Roma"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Note aggiuntive
+            </label>
+            <textarea
+              name="notes"
+              value={form.notes}
+              onChange={handleChange}
+              rows={3}
+              className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="Orari desiderati, tipo di evento, richieste particolari..."
+            />
+          </div>
+
+          <div className="flex justify-end">
             <button
-              className="btn primary"
-              onClick={async () => {
-                const nome = prompt("Nome nuova meta:");
-                if (!nome) return;
-
-                const data = prompt("Data viaggio (YYYY-MM-DD):");
-                if (!data) return;
-
-                const { error } = await supabase
-                  .from("trips")
-                  .insert({ name: nome, date: data });
-
-                if (error) {
-                  alert("Errore aggiunta meta");
-                } else {
-                  loadTrips();
-                }
-              }}
+              type="submit"
+              className="px-6 py-2.5 text-sm font-semibold rounded-full bg-indigo-600 text-white shadow hover:bg-indigo-700 transition"
             >
-              ➕ Aggiungi Meta
+              Invia richiesta
             </button>
-          </section>
-        )}
+          </div>
+        </form>
+      </div>
+    </section>
+  );
+}
 
-      </main>
+function Footer() {
+  return (
+    <footer id="contacts" className="bg-gray-900 text-gray-300 py-8">
+      <div className="max-w-5xl mx-auto px-4 flex flex-col md:flex-row justify-between gap-4">
+        <div>
+          <h3 className="font-semibold text-white mb-1">GT Delgrosso</h3>
+          <p className="text-sm text-gray-400">
+            Viaggi, feste e spostamenti di gruppo in tutta sicurezza.
+          </p>
+        </div>
+        <div className="text-sm text-gray-400">
+          <p>Per informazioni e preventivi:</p>
+          <p className="font-medium text-gray-200">info@gt-delgrosso.it</p>
+          <p className="font-medium text-gray-200">+39 333 123 4567</p>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function App() {
+  return (
+    <div className="font-sans">
+      <Navbar />
+      <Hero />
+      <ServicesSection />
+      <BookingForm />
+      <Footer />
     </div>
   );
 }
+
+export default App;
