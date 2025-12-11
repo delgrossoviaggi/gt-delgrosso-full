@@ -1,0 +1,346 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  background: #f5f7fa;
+}
+
+.page {
+  max-width: 1100px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* HEADER */
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px #00000015;
+  margin-bottom: 20px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.logo {
+  height: 60px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: #666;
+  margin: 0;
+}
+
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.bus-selector select {
+  padding: 5px;
+  border-radius: 6px;
+}
+
+/* ADMIN */
+
+.admin-login {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-login input {
+  padding: 5px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.admin-login button {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: none;
+  background: #1976d2;
+  color: white;
+  cursor: pointer;
+}
+
+.admin-badge {
+  padding: 5px 10px;
+  background: #008f39;
+  color: white;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+/* MESSAGGI */
+
+.message {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+
+.loading {
+  font-size: 13px;
+  color: #555;
+}
+
+/* CONTENUTO PRINCIPALE */
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* SECTION */
+
+.section {
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px #00000012;
+  margin-bottom: 10px;
+}
+
+.section-title {
+  font-size: 18px;
+  margin-bottom: 15px;
+}
+
+/* PIANTINA BUS */
+
+.bus-map {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bus-row {
+  display: grid;
+  grid-template-columns: 40px 40px 30px 40px 40px;
+  align-items: center;
+  gap: 8px;
+}
+
+.seat {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #eaeaea;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.seat.selected {
+  background: #4caf50;
+  color: white;
+}
+
+.seat.booked {
+  background: #c62828;
+  color: white;
+  text-decoration: line-through;
+}
+
+.seat.empty {
+  background: transparent;
+}
+
+.aisle {
+  background: transparent;
+}
+
+/* LEGENDA */
+
+.legend {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-item .seat {
+  width: 18px;
+  height: 18px;
+  font-size: 0;
+}
+
+/* FORM PRENOTAZIONE */
+
+.form-section {
+  margin-top: 10px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-group label {
+  font-size: 13px;
+}
+
+.form-group input,
+.form-group select {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+/* BUTTONS */
+
+.btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  font-size: 14px;
+}
+
+.btn.primary {
+  background: #1976d2;
+  color: white;
+}
+
+.btn.danger {
+  background: #d32f2f;
+  color: white;
+}
+
+.btn.small {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.btn.whatsapp {
+  background: #25d366;
+  color: white;
+}
+
+/* LISTA PRENOTAZIONI */
+
+.booking-list {
+  margin-top: 10px;
+}
+
+.booking-card {
+  background: #f7f7f7;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.booking-main p {
+  margin: 3px 0;
+  font-size: 13px;
+}
+
+.booking-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* METE */
+
+.trip-list {
+  margin-top: 10px;
+}
+
+.trip-card {
+  padding: 10px;
+  border-radius: 8px;
+  background: #f0f0f0;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.trip-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.trip-date {
+  color: #777;
+  font-size: 13px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .header-right {
+    align-items: flex-start;
+  }
+
+  .bus-row {
+    grid-template-columns: 32px 32px 20px 32px 32px;
+  }
+
+  .seat {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .booking-actions {
+    flex-direction: row;
+  }
+}
