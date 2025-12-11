@@ -12,10 +12,10 @@ function Navbar() {
     <nav className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur border-b border-gray-200 z-20">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
         <div
-          className="text-xl font-extrabold tracking-tight text-indigo-700 cursor-pointer"
+          className="text-lg font-extrabold tracking-tight text-indigo-700 cursor-pointer"
           onClick={() => handleScroll("top")}
         >
-          GT Delgrosso
+          Delgrosso Viaggi & Limousine Bus
         </div>
 
         <div className="hidden sm:flex gap-6 text-sm font-medium text-gray-700">
@@ -51,7 +51,8 @@ function Hero() {
       <div className="max-w-5xl mx-auto px-4 pt-20 pb-16 flex flex-col md:flex-row items-center gap-10">
         <div className="flex-1">
           <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4 leading-tight">
-            Benvenuto su <span className="text-indigo-700">GT Delgrosso</span>
+            Benvenuto su{" "}
+            <span className="text-indigo-700">Delgrosso Viaggi & Limousine Bus</span>
             <br />
             il tuo viaggio inizia qui 🚍
           </h1>
@@ -79,7 +80,7 @@ function Hero() {
         <div className="flex-1 w-full">
           <div className="rounded-3xl border border-indigo-100 bg-white shadow-sm p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-3">
-              Perché scegliere GT Delgrosso?
+              Perché scegliere Delgrosso Viaggi & Limousine Bus?
             </h2>
             <ul className="space-y-2 text-sm text-gray-700">
               <li>• Bus discoteca per feste, compleanni, addii al celibato/nubilato</li>
@@ -155,7 +156,6 @@ function BookingForm() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Per ora simuliamo l'invio
     console.log("Richiesta prenotazione:", form);
     alert("Richiesta di prenotazione inviata! (per ora solo di prova 😄)");
     setForm((prev) => ({ ...prev, notes: "" }));
@@ -317,15 +317,23 @@ function Footer() {
     <footer id="contacts" className="bg-gray-900 text-gray-300 py-8">
       <div className="max-w-5xl mx-auto px-4 flex flex-col md:flex-row justify-between gap-4">
         <div>
-          <h3 className="font-semibold text-white mb-1">GT Delgrosso</h3>
+          <h3 className="font-semibold text-white mb-1">
+            Delgrosso Viaggi & Limousine Bus
+          </h3>
           <p className="text-sm text-gray-400">
             Viaggi, feste e spostamenti di gruppo in tutta sicurezza.
           </p>
         </div>
+
         <div className="text-sm text-gray-400">
           <p>Per informazioni e preventivi:</p>
-          <p className="font-medium text-gray-200">info@gt-delgrosso.it</p>
-          <p className="font-medium text-gray-200">+39 333 123 4567</p>
+          <p className="font-medium text-gray-200">delgrossoviaggi@blu.it</p>
+          <p className="font-medium text-gray-200">
+            Tel.: 320 573 0466 (Raffaele)
+          </p>
+          <p className="font-medium text-gray-200">
+            Tel.: 366 212 7916 (Nicola)
+          </p>
         </div>
       </div>
     </footer>
